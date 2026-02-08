@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Мои объявления</h2>
+
+{% for listing in listings %}
+    <a href="{% url 'listing_detail' listing.pk %}">
+        {{ listing.title }}
+    </a>
+    <br>
+{% empty %}
+    <p>У тебя пока нет объявлений</p>
+{% endfor %}
+
+{% endblock %}
