@@ -8,6 +8,9 @@ from django.db.models import Q
 from django.shortcuts import redirect
 from .forms import RegisterForm, LoginForm
 from django.contrib.auth.models import User
+from django.urls import reverse
+
+
 
 
 
@@ -94,7 +97,8 @@ def login_view(request):
     return render(request, 'listings/login.html', {'form': form})
 
 
-    
+
+@login_required
 def logout_view(request):
     request.session.flush()
     return redirect('listing')
@@ -107,3 +111,21 @@ def my_listings(request):
     return render(request, 'listings/my_listings.html', {'listings': listings})
 
 
+@login_required
+def favorite_listings(request):
+    user = request.user
+    favorite_listings = user.favorite_listings.all()
+    return render(request, 'listings/favorite_listings.html', {'favorite_listings': favorite_listings})
+
+@login_required
+def toggle_favorite(request, pk):
+    listing = get_object_or_404(Listing, pk=pk)
+    user = request.user
+    
+    if user in listing.favorites.all():
+        listing.favorites.remove(user)
+    else:
+        listing.favorites.add(user)
+    
+
+    return redirect('listing_detail', pk=pk)

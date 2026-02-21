@@ -18,13 +18,59 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
         }
 
-        header a {
+        .logo a {
             color: white;
             text-decoration: none;
             font-weight: bold;
-            margin-left: 15px;
+            font-size: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .nav-links a:hover {
+            background: #2d3748;
+        }
+
+        /* Специальный стиль для избранного */
+        .favorite-link {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .heart-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .heart-icon.active {
+            color: #ef4444;
+        }
+
+        .badge {
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+            margin-left: 5px;
         }
 
         .container {
@@ -60,10 +106,20 @@
             border-radius: 6px;
             text-decoration: none;
             margin-top: 10px;
+            border: none;
+            cursor: pointer;
         }
 
         .btn:hover {
             background: #1e40af;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
         }
     </style>
 </head>
@@ -71,14 +127,28 @@
 <body>
 
 <header>
-    <a href="/">OLX</a>
+    <div class="logo">
+        <a href="{% url 'listing' %}">OLX</a>
+    </div>
 
-    <div>
+    <div class="nav-links">
+        <!-- Кнопка избранного для авторизованных пользователей -->
+        {% if user.is_authenticated %}
+            <a href="{% url 'favorite_listings' %}" class="favorite-link">
+                <span class="heart-icon {% if user.favorite_listings.exists %}active{% endif %}">❤️</span>
+                Избранное
+                {% if user.favorite_listings.count > 0 %}
+                    <span class="badge">{{ user.favorite_listings.count }}</span>
+                {% endif %}
+            </a>
+        {% endif %}
+
         <a href="{% url 'listing_create' %}">Добавить объявление</a>
 
         {% if user.is_authenticated %}
             <a href="{% url 'my_listings' %}">Мои объявления</a>
             <a href="{% url 'logout' %}">Выйти</a>
+            <span style="color: #9ca3af;">Привет, {{ user.username }}!</span>
         {% else %}
             <a href="{% url 'login' %}">Войти</a>
             <a href="{% url 'register' %}">Регистрация</a>

@@ -14,6 +14,8 @@ urlpatterns = [
     path('my-listings/', my_listings, name='my_listings'),
     path('logout/', logout_view, name='logout'),
     path('login/', auth_views.LoginView.as_view(template_name='listings/login.html'), name='login'),
+    path('favorite-listings/', views.favorite_listings, name='favorite_listings'),
+    path('toggle-favorite/<int:pk>/', views.toggle_favorite, name='toggle_favorite'),
 
 
 ]

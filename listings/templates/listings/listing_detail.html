@@ -1,12 +1,76 @@
 {% extends "base.html" %}
 
+{% block title %}{{ product.title }} | OLX{% endblock %}
+
 {% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    
+    <!-- Навигация назад -->
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'listing' %}" style="color: #2563eb; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+            ← Вернуться к объявлениям
+        </a>
+    </div>
 
-{{ product.title }}
-{{ product.price }}
-{{ product.currency }}
-{{ product.category }}
-{{ product.description }}
+    <!-- Карточка товара -->
+    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        
+        <!-- Заголовок и цена -->
+        <div style="margin-bottom: 25px;">
+            <h1 style="font-size: 26px; margin: 0 0 15px 0; color: #111827;">{{ product.title }}</h1>
+            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
+                <span style="font-size: 32px; font-weight: bold; color: #059669;">{{ product.price }} {{ product.currency }}</span>
+                <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 14px;">
+                    {{ product.category.name }}
+                </span>
+            </div>
+        </div>
 
+        <!-- Блок с продавцом и действиями -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+            
+            <!-- Информация о продавце -->
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                    {{ product.author.username|first|upper }}
+                </div>
+                <span style="font-weight: 500;">{{ product.author.username }}</span>
+            </div>
 
+            <!-- Действия -->
+            {% if user.is_authenticated %}
+                <div style="display: flex; gap: 10px;">
+                    <form method="post" action="{% url 'toggle_favorite' product.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" style="padding: 8px 16px; border: 1px solid #e5e7eb; background: white; border-radius: 8px; cursor: pointer; {% if user in product.favorites.all %}color: #ef4444;{% endif %}">
+                            {% if user in product.favorites.all %}❤️{% else %}🤍{% endif %} Избранное
+                        </button>
+                    </form>
+                    
+                    {% if user == product.author %}
+                        <a href="#" style="padding: 8px 16px; background: #fbbf24; color: black; text-decoration: none; border-radius: 8px;">✏️</a>
+                        <a href="#" style="padding: 8px 16px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px;">🗑️</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Описание -->
+        <div style="margin-bottom: 25px;">
+            <h2 style="font-size: 18px; margin-bottom: 10px; color: #374151;">Описание</h2>
+            <p style="color: #4b5563; line-height: 1.6; margin: 0;">{{ product.description }}</p>
+        </div>
+
+        <!-- Детали -->
+        <div style="background: #f9fafb; padding: 15px; border-radius: 8px;">
+            <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px;">
+                <span style="color: #6b7280;">Категория:</span>
+                <span style="color: #111827;">{{ product.category.name }}</span>
+                
+                <span style="color: #6b7280;">Дата:</span>
+                <span style="color: #111827;">{{ product.created_at|date:"d.m.Y" }}</span>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
