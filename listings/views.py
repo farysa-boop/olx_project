@@ -1,131 +1,147 @@
-from django.shortcuts import render
-from .models import Listing
-from .models import Category
-from django.shortcuts import redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from .forms import ListingForm
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import ListView, DetailView, CreateView, View
+from django.urls import reverse_lazy
 from django.db.models import Q
-from django.shortcuts import redirect
-from .forms import RegisterForm, LoginForm
 from django.contrib.auth.models import User
-from django.urls import reverse
+from django.core.cache import cache
+from .models import Listing, Category
+from .forms import ListingForm, RegisterForm, LoginForm
 
 
+class HomeView(ListView):
+    model = Listing
+    template_name = 'listings/home.html'
+    context_object_name = 'products'
+
+    def get_queryset(self):
+        q = self.request.GET.get("q", "").strip()
+        category_slug = self.request.GET.get("category", "").strip()
+
+        cache_key = f"products_{q}_{category_slug}"
+        products = cache.get(cache_key)
+
+        if not products:
+            products = Listing.objects.filter(is_active=True)
+
+            if q:
+                products = products.filter(
+                    Q(title__icontains=q) | Q(description__icontains=q)
+                )
+
+            if category_slug:
+                products = products.filter(category__slug=category_slug)
+
+            products = list(products)
+            cache.set(cache_key, products, 60)
+
+        return products
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        categories = cache.get("categories")
+
+        if not categories:
+            categories = list(Category.objects.all())
+            cache.set("categories", categories, 600)
+
+        context['categories'] = categories
+        context['q'] = self.request.GET.get("q", "").strip()
+        context['selected_category'] = self.request.GET.get("category", "").strip()
+
+        return context
 
 
+class ListingDetailView(DetailView):
+    model = Listing
+    template_name = 'listings/listing_detail.html'
+    context_object_name = 'product'
+    pk_url_kwarg = 'pk'
 
 
-def listing_list(request):
-    products = Listing.objects.filter(is_active=True)
+class ListingCreateView(LoginRequiredMixin, CreateView):
+    model = Listing
+    form_class = ListingForm
+    template_name = 'listings/listing_create.html'
+    success_url = reverse_lazy('listing')
 
-    q = request.GET.get("q", "").strip()
-    if q:
-        products = products.filter(
-            Q(title__icontains=q) | Q(description__icontains=q)
-        )
-    category_slug = request.GET.get("category", "").strip()
-    if category_slug:
-        products = products.filter(category__slug=category_slug)
-    categories = Category.objects.all()
-
-    return render(request, "listings/home.html", {
-        "products": products,
-        "q": q,
-        "categories": categories,
-        "selected_category": category_slug,
-    })
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        cache.clear()
+        return super().form_valid(form)
 
 
-def listing_detail(request, pk):
-    product = get_object_or_404(Listing, pk= pk)
-    return render(request, 'listings/listing_detail.html', {'product': product})
+class RegisterView(View):
+    def get(self, request):
+        form = RegisterForm()
+        return render(request, 'listings/register.html', {'form': form})
 
-@login_required
-def listing_create(request):
-    if request.method == 'POST':
-        form = ListingForm(request.POST)
-        if form.is_valid():
-            listing = form.save(commit=False)
-            listing.author = request.user
-            listing.save()
-            return redirect('listing')
-    else:
-        form = ListingForm
-        return render(request, 'listings/listing_create.html', {'form': form})
-    
-    
-    
-def register_view(request):
-    if request.method == 'POST':
+    def post(self, request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
-
-            User.objects.create_user(
-                username=username,
-                password=password  
-            )
-
+            User.objects.create_user(username=username, password=password)
             return redirect('login')
-    else:
-        form = RegisterForm()
 
-    return render(request, 'listings/register.html', {'form': form})
+        return render(request, 'listings/register.html', {'form': form})
 
-def login_view(request):
-    if request.method == 'POST':
+
+class LoginView(View):
+    def get(self, request):
+        form = LoginForm()
+        return render(request, 'listings/login.html', {'form': form})
+
+    def post(self, request):
         form = LoginForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
-
             try:
                 user = User.objects.get(username=username)
-
                 if user.password == password:
                     request.session['user_id'] = user.id
                     return redirect('listing')
                 else:
                     form.add_error(None, "Неверный пароль")
-
             except User.DoesNotExist:
                 form.add_error(None, "Пользователь не найден")
-    else:
-        form = LoginForm()
 
-    return render(request, 'listings/login.html', {'form': form})
+        return render(request, 'listings/login.html', {'form': form})
 
 
-
-@login_required
-def logout_view(request):
-    request.session.flush()
-    return redirect('listing')
-
+class LogoutView(LoginRequiredMixin, View):
+    def get(self, request):
+        request.session.flush()
+        return redirect('listing')
 
 
-@login_required
-def my_listings(request):
-    listings = Listing.objects.filter(author=request.user)
-    return render(request, 'listings/my_listings.html', {'listings': listings})
+class MyListingsView(LoginRequiredMixin, ListView):
+    model = Listing
+    template_name = 'listings/my_listings.html'
+    context_object_name = 'listings'
+
+    def get_queryset(self):
+        return Listing.objects.filter(author=self.request.user)
 
 
-@login_required
-def favorite_listings(request):
-    user = request.user
-    favorite_listings = user.favorite_listings.all()
-    return render(request, 'listings/favorite_listings.html', {'favorite_listings': favorite_listings})
+class FavoriteListView(LoginRequiredMixin, ListView):
+    template_name = 'listings/favorite_listings.html'
+    context_object_name = 'favorite_listings'
 
-@login_required
-def toggle_favorite(request, pk):
-    listing = get_object_or_404(Listing, pk=pk)
-    user = request.user
-    
-    if user in listing.favorites.all():
-        listing.favorites.remove(user)
-    else:
-        listing.favorites.add(user)
-    
+    def get_queryset(self):
+        return self.request.user.favorite_listings.all()
 
-    return redirect('listing_detail', pk=pk)
+
+class ToggleFavoriteView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        listing = get_object_or_404(Listing, pk=pk)
+        user = request.user
+
+        if user in listing.favorites.all():
+            listing.favorites.remove(user)
+        else:
+            listing.favorites.add(user)
+
+        return redirect('listing_detail', pk=pk)

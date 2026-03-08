@@ -1,21 +1,16 @@
 from django.urls import path
 from . import views
-from .views import register_view
-from .views import my_listings
-from .views import logout_view
-from django.contrib.auth import views as auth_views
-
+from django.contrib import admin
 
 urlpatterns = [
-    path('', views.listing_list, name='listing'),
-    path('detail/<int:pk>/', views.listing_detail, name='listing_detail'),
-    path('create/', views.listing_create, name='listing_create'),
-    path('register/', register_view, name='register'),
-    path('my-listings/', my_listings, name='my_listings'),
-    path('logout/', logout_view, name='logout'),
-    path('login/', auth_views.LoginView.as_view(template_name='listings/login.html'), name='login'),
-    path('favorite-listings/', views.favorite_listings, name='favorite_listings'),
-    path('toggle-favorite/<int:pk>/', views.toggle_favorite, name='toggle_favorite'),
-
-
+    path('', views.HomeView.as_view(), name='listing'),
+    path('listing/<int:pk>/', views.ListingDetailView.as_view(), name='listing_detail'),
+    path('create/', views.ListingCreateView.as_view(), name='listing_create'),
+    path('register/', views.RegisterView.as_view(), name='register'),
+    path('login/', views.LoginView.as_view(), name='login'),
+    path('logout/', views.LogoutView.as_view(), name='logout'),
+    path('my-listings/', views.MyListingsView.as_view(), name='my_listings'),
+    path('favorites/', views.FavoriteListView.as_view(), name='favorite_listings'),
+    path('toggle-favorite/<int:pk>/', views.ToggleFavoriteView.as_view(), name='toggle_favorite'),
+    path('admin/', admin.site.urls) 
 ]
