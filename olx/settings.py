@@ -1,3 +1,4 @@
+import os
 """
 Django settings for olx project.
 
@@ -125,3 +126,17 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_REDIRECT_URL = 'listing'
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",  # движок django-redis
+        "LOCATION": REDIS_URL,                        # адрес Redis
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",  # клиент
+        },
+        "KEY_PREFIX": "myproject",  # префикс для ключей
+        "TIMEOUT": 300,             # дефолтное время жизни кэша (5 минут)
+    }
+}

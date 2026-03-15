@@ -9,6 +9,7 @@ from .models import Listing, Category
 from .forms import ListingForm, RegisterForm, LoginForm
 
 
+
 class HomeView(ListView):
     model = Listing
     template_name = 'listings/home.html'
@@ -18,24 +19,19 @@ class HomeView(ListView):
         q = self.request.GET.get("q", "").strip()
         category_slug = self.request.GET.get("category", "").strip()
 
-        cache_key = f"products_{q}_{category_slug}"
-        products = cache.get(cache_key)
+        products = Listing.objects.filter(is_active=True)
 
-        if not products:
-            products = Listing.objects.filter(is_active=True)
+        if q:
+            products = products.filter(
+                Q(title__icontains=q) | Q(description__icontains=q)
+            )
 
-            if q:
-                products = products.filter(
-                    Q(title__icontains=q) | Q(description__icontains=q)
-                )
-
-            if category_slug:
-                products = products.filter(category__slug=category_slug)
-
-            products = list(products)
-            cache.set(cache_key, products, 60)
+        if category_slug:
+            products = products.filter(category__slug=category_slug)
 
         return products
+
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
