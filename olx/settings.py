@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'olx',
+    'rest_framework',
     'listings'
     
 ]
@@ -136,7 +137,7 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",  # клиент
         },
-        "KEY_PREFIX": "myproject",  # префикс для ключей
+        "KEY_PREFIX": "olx",  # префикс для ключей
         "TIMEOUT": 300,             # дефолтное время жизни кэша (5 минут)
     }
 }

@@ -7,6 +7,22 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from .models import Listing, Category
 from .forms import ListingForm, RegisterForm, LoginForm
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .serializers import CategorySerializer
+from django.forms.models import model_to_dict
+from rest_framework.generics import ListAPIView
+from rest_framework.generics import RetriveDestroyAPIView
+from rest_framework.generics import CreateAPIView
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import DestroyAPIView
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from .serializers import ListingSerializer
+from rest_framework import status
+from .models import Listing
 
 
 
@@ -130,14 +146,109 @@ class FavoriteListView(LoginRequiredMixin, ListView):
         return self.request.user.favorite_listings.all()
 
 
-class ToggleFavoriteView(LoginRequiredMixin, View):
-    def get(self, request, pk):
-        listing = get_object_or_404(Listing, pk=pk)
-        user = request.user
+# class ToggleFavoriteView(LoginRequiredMixin, View):
+#     def get(self, request, pk):
+#         listing = get_object_or_404(Listing, pk=pk)
+#         user = request.user
+#
+#         if user in listing.favorites.all():
+#             listing.favorites.remove(user)
+#         else:
+#             listing.favorites.add(user)
+#
+#         return redirect('listing_detail', pk=pk)
+#
+# class CategoryListApiView(APIView):
+#     def get(self, request):
+#         categories = Category.objects.all()
+#         serializer = CategorySerializer(categories, many=True)
+#         return Response(serializer.data)
+#     def post(self, request):
+#         post_category = Category.objects.create(
+#             name=request.data['name'],
+#             slug=request.data['slug']
+#         )
+#         return Response(
+#             {
+#                 'post': model_to_dict(post_category)
+#             }
+#         )
 
-        if user in listing.favorites.all():
-            listing.favorites.remove(user)
-        else:
-            listing.favorites.add(user)
 
-        return redirect('listing_detail', pk=pk)
+# показывает список всех категорий
+class CategoryListApiView(ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+# получить удалить
+class CategoryRetriveUpdateDestroy(RetriveDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+
+# 1создание категории
+class CategoryCreateAPIView(CreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+
+# получение одной категории
+class CategoryRetrieveAPIView(RetrieveAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+
+
+class CategoryDestroyAPIView(DestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+# 1. чтение длч всех
+@api_view(['GET'])
+def listing_list(request):
+    listings = Listing.objects.filter(is_active=True)
+    serializer = ListingSerializer(listings, many=True)
+    return Response(serializer.data)
+@api_view(['GET'])
+def listing_detail(request, pk):
+    listing = get_object_or_404(Listing, pk=pk, is_active=True)
+    serializer = ListingSerializer(listing)
+    return Response(serializer.data)
+
+
+# 2. для тех кто сделал вход
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def listing_create(request):
+    serializer = ListingSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(author=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# 3. редактирование для автора
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def listing_update_delete(request, pk):
+    listing = get_object_or_404(Listing, pk=pk)
+    if listing.author != request.user:
+        return Response(
+            {'error': 'Вы можете редактировать ток свои обьявления'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if request.method == 'PUT':
+        serializer = ListingSerializer(listing, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        listing.delete()
+        return Response({'message': 'Объявление удалено'}, status=status.HTTP_204_NO_CONTENT)
