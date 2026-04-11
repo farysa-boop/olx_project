@@ -207,12 +207,24 @@ class CategoryDestroyAPIView(DestroyAPIView):
     serializer_class = CategorySerializer
 
 
-# 1. чтение длч всех
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
+from .models import Listing
+from .serializers import ListingSerializer
+
+
+# 1. чтение для всех
 @api_view(['GET'])
 def listing_list(request):
     listings = Listing.objects.filter(is_active=True)
     serializer = ListingSerializer(listings, many=True)
     return Response(serializer.data)
+
+
 @api_view(['GET'])
 def listing_detail(request, pk):
     listing = get_object_or_404(Listing, pk=pk, is_active=True)
@@ -220,9 +232,9 @@ def listing_detail(request, pk):
     return Response(serializer.data)
 
 
-# 2. для тех кто сделал вход
+# 2. создание — только админ
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def listing_create(request):
     serializer = ListingSerializer(data=request.data)
     if serializer.is_valid():
@@ -231,16 +243,11 @@ def listing_create(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# 3. редактирование для автора
+# 3. редактирование и удаление — только админ
 @api_view(['PUT', 'DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def listing_update_delete(request, pk):
     listing = get_object_or_404(Listing, pk=pk)
-    if listing.author != request.user:
-        return Response(
-            {'error': 'Вы можете редактировать ток свои обьявления'},
-            status=status.HTTP_403_FORBIDDEN
-        )
 
     if request.method == 'PUT':
         serializer = ListingSerializer(listing, data=request.data)
